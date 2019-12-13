@@ -18,7 +18,7 @@ model.add(keras.layers.Dense(units=3, activation='elu'))
 #model.add(keras.layers.Dense(units=8, activation='elu'))
 #model.add(keras.layers.Dense(units=3, activation='elu'))
 
-#model = keras.models.load_model("breakout.h5")
+model = keras.models.load_model("breakout.h5")
 
 def image_prep(obs):
     obs = obs[0:-14,8:-8]
@@ -29,12 +29,12 @@ def image_prep(obs):
     return obs
 
 model.compile(loss='mse',
-              optimizer=keras.optimizers.SGD(lr=0.1))
+              optimizer=keras.optimizers.SGD(lr=0.01))
 print(model.summary())
 
 env = gym.make('Breakout-v0')
 env.reset()
-for i in range(10):
+for i in range(100):
     done = False
     observation = image_prep(env.reset())
     last_observation = observation
@@ -57,13 +57,13 @@ for i in range(10):
         prediction = model.predict(np.concatenate((next_observation,observation),axis=3))
         print(prediction)
         old_a = a
-        a = np.argmax(prediction)+1
+#        a = np.argmax(prediction)+1
         a = np.random.randint(1, 4)
         if done:
             prediction = np.zeros([1,3])
             reps = 50
         else:
-            prediction[0][old_a-1] = reward + 0.99 * np.max(prediction)
+            prediction[0][old_a-1] = reward + 0.95 * np.max(prediction)
             reps = 1
         model.fit(np.concatenate((observation,last_observation),axis=3), prediction, epochs = reps, verbose = False)
         last_observation = observation
