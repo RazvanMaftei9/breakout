@@ -12,13 +12,11 @@ def model_init():
     model.add(keras.layers.Flatten())
     model.add(keras.layers.Dense(units=16, activation='elu'))
     model.add(keras.layers.Dense(units=3, activation='elu'))
-    model.compile(loss='mse',
-              optimizer=keras.optimizers.SGD(lr=learning_rate))
+    
     print(model.summary())
     return model
 
 decay = 0.95
-learning_rate = 0.01
 
 def image_prep(obs):
     obs = obs[0:-14,8:-8]
@@ -30,8 +28,10 @@ def image_prep(obs):
 
 env = gym.make('Breakout-v0')
 env.reset()
-def train(model, repetitions=100):
-    for i in range(100):
+def train(model, use_random_actions, repetitions=100, learning_rate=0.01):
+    model.compile(loss='mse',
+              optimizer=keras.optimizers.SGD(lr=learning_rate))
+    for i in range(repetitions):
         done = False
         observation = image_prep(env.reset())
         last_observation = observation
@@ -54,15 +54,17 @@ def train(model, repetitions=100):
             prediction = model.predict(np.concatenate((next_observation,observation),axis=3))
             print(prediction)
             old_a = a
-            a = np.argmax(prediction)+1
-            # a = np.random.randint(1, 4)
+            if use_random_actions:
+                a = np.random.randint(1, 4)
+            else:
+                a = np.argmax(prediction)+1
             if done:
                 prediction = np.zeros([1,3])
-                repetitions = 50
+                epochs = 50
             else:
                 prediction[0][old_a-1] = reward + decay * np.max(prediction)
-                repetitions = 1
-            model.fit(np.concatenate((observation,last_observation),axis=3), prediction, epochs = repetitions, verbose = False)
+                epochs = 1
+            model.fit(np.concatenate((observation,last_observation),axis=3), prediction, epochs = epochs, verbose = False)
             last_observation = observation
             observation = next_observation
         print(i, sum)
@@ -70,7 +72,8 @@ def train(model, repetitions=100):
             model.save('breakout.h5')
 
 model = model_init()
-train(model)
+train(model, True, repetitions=10, learning_rate=0.01)
+train(model, False, repetitions = 1000, learning_rate=0.0001)
 
 env.close()
 
